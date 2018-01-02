@@ -1,0 +1,281 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width" />
+    <title>Автомобили</title>
+    <link href="lib/bootstrap/dist/css/bootstrap.css" rel="stylesheet" />
+    <script src="lib/jquery/dist/jquery.js"></script>
+    <link href="lib/jquery-ui/themes/base/jquery-ui.min.css" rel="stylesheet" />
+    <script src="lib/jquery-ui/jquery-ui.js"></script>
+    <script src="lib/jquery-ui/ui/i18n/datepicker-ru.js"></script>
+
+</head>
+<body>
+    <div class="container">
+        <h2>Список автомобилей</h2>
+        <form name="carForm">
+            <input type="hidden" name="carID" value="0" />
+
+            <div class="form-group">
+                <label for="brandName">Марка:</label>
+                <select id="brandID" name="brandID"></select>
+            </div>
+
+            <div class="form-group">
+                <label for="ownerName">Владелец:</label>
+                <select id="ownerID" name="ownerID"></select>
+            </div>
+
+            <div class="form-group">
+                <label for="carRegistrationNumber">Регистрационный номер:</label>
+                <input class="form-control" name="carRegistrationNumber" />
+            </div>
+
+            <div class="form-group">
+                <label for="carNumberOfPassport">Номер техпаспорта:</label>
+                <input class="form-control" name="carNumberOfPassport" />
+            </div>
+
+            <div class="form-group">
+                <label for="carReleaseDate">Дата выпуска:</label>
+                <input class="form-control" name="carReleaseDate" id="carReleaseDate" />
+  </div>
+
+            <div class="form-group">
+                <label for="carColor">Цвет:</label>
+                <input class="form-control" name="carColor" />
+            </div>
+
+            <div class="panel-body">
+                <button type="submit" class="btn btn-sm btn-primary">Сохранить</button>
+                <a id="reset" class="btn btn-sm btn-primary">Сбросить</a>
+            </div>
+        </form>
+
+        <table class="table table-condensed table-striped table-bordered">
+            <thead><tr><th>Код</th><th>Марка</th><th>Владелец</th><th>Регистрационный номер</th><th>Номер техпаспорта</th><th>Дата выпуска</th><th>Цвет</th><th></th></tr></thead>
+            <tbody></tbody>
+        </table>
+    </div>
+
+    <script>
+
+
+
+        // Получение всех car
+        function GetCars() {
+            $.ajax({
+                url: '/api/cars',
+                type: 'GET',
+                contentType: "application/json",
+                success: function (cars) {
+                    var rows = "";
+                    $.each(cars, function (index, car) {
+                        // добавляем полученные элементы в таблицу
+                        rows += row(car);
+                    })
+                    $("table tbody").append(rows);
+                 }
+            });
+        }
+        // Получение одного car
+        function GetCar(id) {
+            $.ajax({
+                url: '/api/cars/'+id,
+                type: 'GET',
+                contentType: "application/json",
+                success: function (car) {
+                    var form = document.forms["carForm"];
+                    form.elements["carID"].value = car.carID;
+                    form.elements["brandID"].value = car.brandID;
+                    form.elements["ownerID"].value = car.ownerID;
+                    form.elements["carRegistrationNumber"].value = car.carRegistrationNumber;
+                    form.elements["carNumberOfPassport"].value = car.carNumberOfPassport;
+                    form.elements["carReleaseDate"].value = car.carReleaseDate.substring(0, 10);
+                    form.elements["carColor"].value = car.carColor;
+                }
+            });
+        }
+        // Добавление car
+        function CreateCar(brandID, ownerID, carRegistrationNumber,carNumberOfPassport, carReleaseDate, carColor) {
+            $.ajax({
+                url: "api/cars",
+                contentType: "application/json",
+                method: "POST",
+                data: JSON.stringify({
+                    brandID: brandID,
+                    ownerID: ownerID,
+                    carRegistrationNumber: carRegistrationNumber,
+                    carNumberOfPassport: carNumberOfPassport,
+                    carReleaseDate: carReleaseDate,
+                    carColor: carColor
+                }),
+                success: function (car) {
+                    reset();
+                    var form = document.forms["carForm"];
+                    car.brandName = form.elements["brandID"].options[brandID].text;
+                    car.ownerName = form.elements["ownerID"].options[ownerID].text;
+
+                    $("table tbody").append(row(car));
+                }
+            })
+        }
+        // Изменение car
+        function EditCar(carID,brandID, ownerID, carRegistrationNumber, carNumberOfPassport, carReleaseDate, carColor) {
+           $.ajax({
+                url: "api/cars",
+                contentType: "application/json",
+                method: "PUT",
+                data: JSON.stringify({
+                    carID: carID,
+                    brandID: brandID,
+                    ownerID: ownerID,
+                    carRegistrationNumber: carRegistrationNumber,
+                    carNumberOfPassport: carNumberOfPassport,
+                    carReleaseDate: carReleaseDate,
+                    carColor: carColor
+                }),
+                success: function (car) {
+                    reset();
+                    var form = document.forms["carForm"];
+                    car.brandName = form.elements["brandID"].options[brandID].text;
+                    car.ownerName = form.elements["ownerID"].options[ownerID].text;
+
+                    $("tr[data-rowid='" + car.carID + "']").replaceWith(row(car));
+
+                }
+            })
+        }
+
+        // сброс формы
+        function reset() {
+            var form = document.forms["carForm"];
+            form.reset();
+            form.elements["carID"].value = 0;
+        }
+
+        // Удаление car
+        function DeleteCar(id) {
+            $.ajax({
+                url: "api/cars/" + id,
+                contentType: "application/json",
+                method: "DELETE",
+                success: function (car) {
+                    $("tr[data-rowid='" + car.carID + "']").remove();
+                }
+            })
+        }
+        // создание строки для таблицы
+        var row = function (car) {
+            return "<tr data-rowid='" + car.carID + "'><td>" + car.carID + "</td>" +
+                "<td>" + car.brandName + "</td> <td>" + car.ownerName + "</td> <td>" +   car.carRegistrationNumber + "</td> <td>" + car.carNumberOfPassport + "</td> <td>" + car.carReleaseDate.substring(0, 10)  + "</td> <td>" + car.carColor + "</td>" +
+                "<td><a class='editLink' data-id='" + car.carID + "'>Изменить</a> | " +
+                "<a class='removeLink' data-id='" + car.carID + "'>Удалить</a></td></tr>";
+        }
+
+        // Получение списка brand
+        function GetCarsList() {
+            var listItems = "";
+            $.ajax({
+                url: '/api/cars',
+                type: 'GET',
+                contentType: "application/json",
+                success: function (cars) {
+                    $.each(cars, function (index, car) {
+                        listItems = listItems + "<option value='" + car.carID + "'>" + car.carColor + "</option>";
+                    });
+                    $("#CarsList").html(listItems);
+                }
+            });
+        }
+
+
+        // Получение списка brands
+        function GetBrands() {
+            var listItems = "";
+            $.ajax({
+                url: '/api/cars/brands',
+                type: 'GET',
+                contentType: "application/json",
+                success: function (brands) {
+                    listItems = listItems + "<option value=0 selected>(выбор)</option>";
+                    $.each(brands, function (index, brand) {
+                        listItems = listItems + "<option value='" + brand.brandID + "'>" + brand.brandName + "</option>";
+                    });
+                    $("#brandID").html(listItems);
+                }
+            });
+        }
+
+        // Получение списка owners
+        function GetOwners() {
+            var listItems = "";
+            $.ajax({
+                url: '/api/cars/owners',
+                type: 'GET',
+                contentType: "application/json",
+                success: function (owners) {
+                    listItems = listItems + "<option value=0 selected>(выбор)</option>";
+                    $.each(owners, function (index, owner) {
+                        listItems = listItems + "<option value='" + owner.ownerID + "'>" + owner.ownerName + "</option>";
+                    });
+                    $("#ownerID").html(listItems);
+                }
+            });
+        }
+
+
+        // сброс значений формы
+        $("#reset").click(function (e) {
+
+            e.preventDefault();
+            reset();
+        })
+
+
+
+        // отправка формы
+        $("form").submit(function (e) {
+            e.preventDefault();
+            var carID = this.elements["carID"].value;
+            var brandID = this.elements["brandID"].value;
+            var ownerID = this.elements["ownerID"].value;
+            var carRegistrationNumber = this.elements["carRegistrationNumber"].value;
+            var carNumberOfPassport = this.elements["carNumberOfPassport"].value;
+            var carReleaseDate = this.elements["carReleaseDate"].value;
+            var carColor = this.elements["carColor"].value;
+            if (carID == 0)
+                CreateCar(brandID, ownerID, carRegistrationNumber, carNumberOfPassport, carReleaseDate, carColor);
+            else
+                EditCar(carID,brandID, ownerID, carRegistrationNumber, carNumberOfPassport, carReleaseDate, carColor);
+
+        });
+
+        // нажимаем на ссылку Изменить
+        $("body").on("click", ".editLink", function () {
+            var id = $(this).data("id");
+            GetCar(id);
+        })
+        // нажимаем на ссылку Удалить
+        $("body").on("click", ".removeLink", function () {
+            var id = $(this).data("id");
+            DeleteCar(id);
+        })
+        // загрузка car
+        GetCars();
+        GetCarsList();
+        GetBrands();
+        GetOwners();
+    </script>
+    <script type="text/javascript">
+        $(document).ready(function () {
+            $("#carReleaseDate").datepicker({ dateFormat: "yy-mm-dd" });
+        });
+    </script>
+
+    <div>
+        <a href="home.html" class="btn btn-sm btn-primary">Вернуться</a>
+    </div>
+</body>
+</html>

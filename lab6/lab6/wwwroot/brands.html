@@ -1,0 +1,201 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width" />
+    <title>Марки автомобилей</title>
+    <link href="lib/bootstrap/dist/css/bootstrap.css" rel="stylesheet" />
+    <script src="lib/jquery/dist/jquery.js"></script>
+    <link href="lib/jquery-ui/themes/base/jquery-ui.min.css" rel="stylesheet" />
+    <script src="lib/jquery-ui/jquery-ui.js"></script>
+    <script src="lib/jquery-ui/ui/i18n/datepicker-ru.js"></script>
+
+</head>
+<body>
+    <div class="container">
+        <h2>Список марок автомобилей</h2>
+        <form name="brandForm">
+            <input type="hidden" name="brandID" value="0" />
+            
+            <div class="form-group">
+                <label for="brandName">Название:</label>
+                <input class="form-control" name="brandName" />
+            </div>
+
+            <div class="form-group">
+                <label for="brandCompany">Компания:</label>
+                <input class="form-control" name="brandCompany" />
+            </div>
+
+            <div class="form-group">
+                <label for="brandCountry">Страна:</label>
+                <input class="form-control" name="brandCountry" />
+            </div>
+
+            <div class="panel-body">
+                <button type="submit" class="btn btn-sm btn-primary">Сохранить</button>
+                <a id="reset" class="btn btn-sm btn-primary">Сбросить</a>
+            </div>
+        </form>
+
+        <table class="table table-condensed table-striped table-bordered">
+            <thead><tr><th>Код</th><th>Название</th><th>Компания</th><th>Страна</th><th></th></tr></thead>
+            <tbody></tbody>
+        </table>
+    </div>
+
+    <script>
+
+
+
+        // Получение всех brand
+        function GetBrands() {
+            $.ajax({
+                url: '/api/brands',
+                type: 'GET',
+                contentType: "application/json",
+                success: function (brands) {
+                    var rows = "";
+                    $.each(brands, function (index, brand) {
+                        // добавляем полученные элементы в таблицу
+                        rows += row(brand);
+                    })
+                    $("table tbody").append(rows);
+                 }
+            });
+        }
+        // Получение одного brand
+        function GetBrand(id) {
+            $.ajax({
+                url: '/api/brands/'+id,
+                type: 'GET',
+                contentType: "application/json",
+                success: function (brand) {
+                    var form = document.forms["brandForm"];
+                    form.elements["brandID"].value = brand.brandID;
+                    form.elements["brandName"].value = brand.brandName;
+                    form.elements["brandCompany"].value = brand.brandCompany;
+                    form.elements["brandCountry"].value = brand.brandCountry;
+                }
+            });
+        }
+        // Добавление brand
+        function CreateBrand(brandName, brandCompany, brandCountry) {
+            $.ajax({
+                url: "api/brands",
+                contentType: "application/json",
+                method: "POST",
+                data: JSON.stringify({
+                    brandName: brandName,
+                    brandCompany: brandCompany,
+                    brandCountry: brandCountry
+                }),
+                success: function (brand) {
+                    reset();
+                    $("table tbody").append(row(brand));
+                }
+            })
+        }
+        // Изменение brand
+        function EditBrand(brandID, brandName, brandCompany, brandCountry) {
+            $.ajax({
+                url: "api/brands",
+                contentType: "application/json",
+                method: "PUT",
+                data: JSON.stringify({
+                    brandID: brandID,
+                    brandName: brandName,
+                    brandCompany: brandCompany,
+                    brandCountry: brandCountry
+                }),
+                success: function (brand) {
+                    reset();
+                    $("tr[data-rowid='" + brand.brandID + "']").replaceWith(row(brand));
+                }
+            })
+        }
+
+        // сброс формы
+        function reset() {
+            var form = document.forms["brandForm"];
+            form.reset();
+            form.elements["brandID"].value = 0;
+        }
+
+        // Удаление brand
+        function DeleteBrand(id) {
+            $.ajax({
+                url: "api/brands/" + id,
+                contentType: "application/json",
+                method: "DELETE",
+                success: function (brand) {
+                    $("tr[data-rowid='" + brand.brandID + "']").remove();
+                }
+            })
+        }
+        // создание строки для таблицы
+        var row = function (brand) {
+            return "<tr data-rowid='" + brand.brandID + "'><td>" + brand.brandID + "</td>" +
+                "<td>" + brand.brandName + "</td> <td>" + brand.brandCompany + "</td> <td>" + brand.brandCountry + "</td>" +
+                "<td><a class='editLink' data-id='" + brand.brandID + "'>Изменить</a> | " +
+                "<a class='removeLink' data-id='" + brand.brandID + "'>Удалить</a></td></tr>";
+        }
+
+        // Получение списка brand
+        function GetBrandsList() {
+            var listItems = "";
+            $.ajax({
+                url: '/api/brands',
+                type: 'GET',
+                contentType: "application/json",
+                success: function (brands) {
+                    $.each(brands, function (index, brand) {
+                        listItems = listItems + "<option value='" + brand.brandID + "'>" + brand.brandName + "</option>";
+                    });
+                    $("#BrandsList").html(listItems);
+                }
+            });
+        }
+
+        // сброс значений формы
+        $("#reset").click(function (e) {
+
+            e.preventDefault();
+            reset();
+        })
+
+
+
+        // отправка формы
+        $("form").submit(function (e) {
+            e.preventDefault();
+            var brandID = this.elements["brandID"].value;
+            var brandName = this.elements["brandName"].value;
+            var brandCompany = this.elements["brandCompany"].value;
+            var brandCountry = this.elements["brandCountry"].value;
+            if (brandID == 0)
+                CreateBrand(brandName, brandCompany, brandCountry);
+            else
+                EditBrand(brandID, brandName, brandCompany, brandCountry);
+        });
+
+        // нажимаем на ссылку Изменить
+        $("body").on("click", ".editLink", function () {
+            var id = $(this).data("id");
+            GetBrand(id);
+        })
+        // нажимаем на ссылку Удалить
+        $("body").on("click", ".removeLink", function () {
+            var id = $(this).data("id");
+            DeleteBrand(id);
+        })
+        // загрузка brand
+        GetBrands();
+        GetBrandsList();
+    </script>
+   
+    <div>
+        <a href="home.html" class="btn btn-sm btn-primary">Вернуться</a>
+    </div>
+</body>
+</html>

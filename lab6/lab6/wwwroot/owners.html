@@ -1,0 +1,205 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width" />
+    <title>Владельцы</title>
+    <link href="lib/bootstrap/dist/css/bootstrap.css" rel="stylesheet" />
+    <script src="lib/jquery/dist/jquery.js"></script>
+    <link href="lib/jquery-ui/themes/base/jquery-ui.min.css" rel="stylesheet" />
+    <script src="lib/jquery-ui/jquery-ui.js"></script>
+    <script src="lib/jquery-ui/ui/i18n/datepicker-ru.js"></script>
+
+</head>
+<body>
+    <div class="container">
+        <h2>Список владельцев</h2>
+        <form name="ownerForm">
+            <input type="hidden" name="ownerID" value="0" />
+
+            <div class="form-group">
+                <label for="ownerName">Имя:</label>
+                <input class="form-control" name="ownerName" />
+            </div>
+            
+            <div class="form-group">
+                <label for="ownerBirthDate">Дата рождения:</label>
+                <input class="form-control" name="ownerBirthDate" id="ownerBirthDate" />
+            </div>
+
+            <div class="form-group">
+                <label for="ownerAddress">Адрес:</label>
+                <input class="form-control" name="ownerAddress" />
+            </div>
+
+            <div class="panel-body">
+                <button type="submit" class="btn btn-sm btn-primary">Сохранить</button>
+                <a id="reset" class="btn btn-sm btn-primary">Сбросить</a>
+            </div>
+        </form>
+        
+        <table class="table table-condensed table-striped table-bordered">
+            <thead><tr><th>Код</th><th>Имя</th><th>Дата</th><th>Адрес</th><th></th></tr></thead>
+            <tbody></tbody>
+        </table>
+    </div>
+
+    <script>
+
+
+
+        // Получение всех owner
+        function GetOwners() {
+            $.ajax({
+                url: '/api/owners',
+                type: 'GET',
+                contentType: "application/json",
+                success: function (owners) {
+                    var rows = "";
+                    $.each(owners, function (index, owner) {
+                        // добавляем полученные элементы в таблицу
+                        rows += row(owner);
+                    })
+                    $("table tbody").append(rows);
+                 }
+            });
+        }
+        // Получение одного owner
+        function GetOwner(id) {
+            $.ajax({
+                url: '/api/owners/'+id,
+                type: 'GET',
+                contentType: "application/json",
+                success: function (owner) {
+                    var form = document.forms["ownerForm"];
+                    form.elements["ownerID"].value = owner.ownerID;
+                    form.elements["ownerName"].value = owner.ownerName;
+                    form.elements["ownerBirthDate"].value = owner.ownerBirthDate.substring(0, 10);
+                    form.elements["ownerAddress"].value = owner.ownerAddress;
+                }
+            });
+        }
+        // Добавление owner
+        function CreateOwner(ownerName, ownerBirthDate, ownerAddress) {
+            $.ajax({
+                url: "api/owners",
+                contentType: "application/json",
+                method: "POST",
+                data: JSON.stringify({
+                    ownerName: ownerName,
+                    ownerBirthDate: ownerBirthDate,
+                    ownerAddress: ownerAddress
+                }),
+                success: function (owner) {
+                    reset();
+                    $("table tbody").append(row(owner));
+                }
+            })
+        }
+        // Изменение owner
+        function EditOwner(ownerID, ownerName, ownerBirthDate, ownerAddress) {
+            $.ajax({
+                url: "api/owners",
+                contentType: "application/json",
+                method: "PUT",
+                data: JSON.stringify({
+                    ownerID: ownerID,
+                    ownerName: ownerName,
+                    ownerBirthDate: ownerBirthDate,
+                    ownerAddress: ownerAddress
+                }),
+                success: function (owner) {
+                    reset();
+                    $("tr[data-rowid='" + owner.ownerID + "']").replaceWith(row(owner));
+                }
+            })
+        }
+
+        // сброс формы
+        function reset() {
+            var form = document.forms["ownerForm"];
+            form.reset();
+            form.elements["ownerID"].value = 0;
+        }
+
+        // Удаление owner
+        function DeleteOwner(id) {
+            $.ajax({
+                url: "api/owners/" + id,
+                contentType: "application/json",
+                method: "DELETE",
+                success: function (owner) {
+                    $("tr[data-rowid='" + owner.ownerID + "']").remove();
+                }
+            })
+        }
+        // создание строки для таблицы
+        var row = function (owner) {
+            return "<tr data-rowid='" + owner.ownerID + "'><td>" + owner.ownerID + "</td>" +
+                "<td>" + owner.ownerName + "</td> <td>" + owner.ownerBirthDate.substring(0, 10) + "</td> <td>" + owner.ownerAddress + "</td>" +
+                "<td><a class='editLink' data-id='" + owner.ownerID + "'>Изменить</a> | " +
+                "<a class='removeLink' data-id='" + owner.ownerID + "'>Удалить</a></td></tr>";
+        }
+
+        // Получение списка owner
+        function GetOwnersList() {
+            var listItems = "";
+            $.ajax({
+                url: '/api/owners',
+                type: 'GET',
+                contentType: "application/json",
+                success: function (owners) {
+                    $.each(owners, function (index, owner) {
+                        listItems = listItems + "<option value='" + owner.ownerID + "'>" + owner.ownerName + "</option>";
+                    });
+                    $("#OwnersList").html(listItems);
+                }
+            });
+        }
+
+        // сброс значений формы
+        $("#reset").click(function (e) {
+
+            e.preventDefault();
+            reset();
+        })
+
+
+
+        // отправка формы
+        $("form").submit(function (e) {
+            e.preventDefault();
+            var ownerID = this.elements["ownerID"].value;
+            var ownerName = this.elements["ownerName"].value;
+            var ownerBirthDate = this.elements["ownerBirthDate"].value;
+            var ownerAddress = this.elements["ownerAddress"].value;
+            if (ownerID == 0)
+                CreateOwner(ownerName, ownerBirthDate, ownerAddress);
+            else
+                EditOwner(ownerID, ownerName, ownerBirthDate, ownerAddress);
+        });
+
+        // нажимаем на ссылку Изменить
+        $("body").on("click", ".editLink", function () {
+            var id = $(this).data("id");
+            GetOwner(id);
+        })
+        // нажимаем на ссылку Удалить
+        $("body").on("click", ".removeLink", function () {
+            var id = $(this).data("id");
+            DeleteOwner(id);
+        })
+        // загрузка owner
+        GetOwners();
+        GetOwnersList();
+    </script>
+    <script type="text/javascript">
+        $(document).ready(function () {
+            $("#ownerBirthDate").datepicker({ dateFormat: "yy-mm-dd" });
+        });
+    </script>
+    <div>
+        <a href="home.html" class="btn btn-sm btn-primary">Вернуться</a>
+    </div>
+</body>
+</html>
